@@ -1,0 +1,498 @@
+Types in Forp
+=============
+
+.. highlight:: tcl
+
+`Type theory`. We've all heard the term, or perhaps one of it's offspring,
+like `dynamic typing` or `static typing` or `abstract type` or `type class`
+or... What are types (from the perspective of Forp) and how do we approach
+them?
+
+Motivation
+----------
+
+One of the open problems in mathematics is the `Collatz conjecture
+<http://en.wikipedia.org/wiki/Collatz_conjecture>`_, which concerns a function
+called the `Collatz map`. Basically, if a number is even, the Collatz map of it
+is that number divided by two; if odd, that number times three and plus one.
+
+Now, say we want to program this. To keep things nice and general (in case we
+want to later investigate related functions), we're going to write the odd and
+even steps as separate functions, with another driver function::
+
+    def/fn collatz/even (n) ->
+        / n 2
+
+    def/fn collatz/odd  (n) ->
+        + (* n 3) 1
+
+    def/fn collatz (n) ->
+        if (even? n) ->
+            collatz/even n
+            collatz/odd  n
+
+Nice and simple.
+
+Now, there's a bit of an issue. Like far too much example code, that code
+ignores the possibility of incorrect arguments. For example, all of the
+following are invalid:
+
+  - ``collatz      1.45``
+  - ``collatz      -2``
+  - ``collatz      0``
+  - ``collatz      "Invalid"``
+  - ``collatz      collatz``
+  - ``collatz/odd  4``
+  - ``collatz/even 3``
+
+``collatz 0`` is invalid because the Collatz map is only defined for positive
+integers. The last two calls are invalid because ``collatz/odd`` and
+``collatz/even`` are only meant to work with odd and even (respectively)
+arguments.
+
+To make errors clearer and enforce the restrictions we place (thus saving
+ourselves from strange bugs), we should encode the restrictions on our
+functions into the functions themselves.
+
+First Attempts
+--------------
+
+The most obvious way is just to add code to check conditions::
+
+    def/fn collatz/even (n) ->
+        assert (and (is? int n) (even? n) (> n 0)) "Argument must be a positive even integer"
+        / n 2
+
+    def/fn collatz/odd  (n) ->
+        assert (and (is? int n) (not -> even? n) (> n 0)) "Argument must be a positive odd integer"
+        + (* n 3) 1
+
+    def/fn collatz (n) ->
+        assert (and (is? int n) (> n 0)) "Argument must be a positive integer"
+        if (even? n) ->
+            collatz/even n
+            collatz/odd  n
+
+Now, what are the problems with this? First of all, this is tedious --- adding
+the conditions, checking, etc. Next, you just know that some junior developer
+will forget. And lastly, you'd also have to go and document all of your
+conditions for the benefit of users. Wouldn't it be nice if this were available
+to library users, for free?
+
+A Solution
+----------
+
+Enter types. Types are a way to state restrictions on values. That's all they
+are. Really. A type is, conceptually, one thing: a function that tells you when
+a value fits (is an `instance of`) that type. By convention, that function is
+the function ``is?``. To create one, you can use the macro ``def/type``::
+
+    def/type positive-even-int ->
+        def/fn is? (n) ->
+            and (is? int n) (even? n) (> n 0)
+
+.. warning:: ``def/type`` is a very low-level construct. Forp has many, many
+    more abstract ways of creating types. You should use them if possible. The
+    only reason ``def/type`` is used here is to demonstrate the inner workings
+    of Forp (which are useful for understanding types in Forp).
+
+Now what? Well, you can now do::
+
+    is? positive-even-int 12  ; #t
+    is? positive-even-int -13 ; #f
+
+Now, we can replace the asserts with a single easy ``is?`` condition. For
+example, ::
+
+    def/fn collatz/even (n) ->
+        assert (is? positive-even-integer n) "Argument must be a positive even integer"
+        / n 2
+
+This is nice, but if we want to do this for all three of the functions for
+Collatz, we'd have to do a lot of ``def/type``\ ing. What of those more
+abstract, higher-level ways I mentioned? Enter ``type/restrict``.
+``type/restrict`` takes two arguments: an existing type, and a function (in
+particular, a function from instances of that type to booleans), and creates a
+new type, all of whose instances must be instances of the given type, but also
+satisfy the given function::
+
+    set! positive-int -> type/restrict int -> fn (n) -> > n 0
+    set! positive-even-int -> type/restrict positive-int even?
+    set! positive-odd-int  -> type/restrict positive-int (fn/not even?)
+
+.. note:: In case you're not familiar with the flexibility of Forp syntax, a
+    quick reminder: every line starting with an arrow is wrapped into phantom
+    parentheses, up until the end of the indented block. Thus, the first line
+    is equivalent to ``set! positive-int -> type/restrict int (fn (x) (> n
+    0))``.
+
+.. note:: ``fn/not`` creates a function that is the logical antonym to a given
+    function.
+
+Alright, cool! We have our three types, and now our argument-checking code is
+much cleaner::
+
+    def/fn collatz/even (n) ->
+        assert (is? positive-even-int n) "Argument must be a positive even integer"
+        / n 2
+
+    def/fn collatz/odd  (n) ->
+        assert (is? positive-odd-int n)  "Argument must be a positive odd integer"
+        + (* n 3) 1
+
+    def/fn collatz (n) ->
+        assert (is? positive-int n) "Argument must be a positive integer"
+        if (even? n) ->
+            collatz/even n
+            collatz/odd  n
+
+Now, this doesn't yet fix any of the problems we noted (cleanliness is good
+too, mind you!), so let's see what can be made better. See that repeated
+``assert``\ ? Let's add some syntax sugar for it! ::
+
+    def/fn collatz/even ([n positive-even-int]) ->
+        / n 2
+
+    def/fn collatz/odd  ([n positive-odd-int]) ->
+        + (* n 3) 1
+
+    def/fn collatz (n) ->
+        if (even? n) ->
+            collatz/even n
+            collatz/odd  n
+
+Now, *this* is cleaner, more readable, and so easy to add that a junior
+developer might remember. Furthermore, Forp can extract this data and make it
+available to users of a library, so that tools can tell you what restrictions
+a certain argument has.
+
+Dispatching
+-----------
+
+You know, there's another thing that's bugging me about the code above. In our
+main, "driver" method, ``collatz``, we're basically checking whether ``n``
+is an instance of ``positive-even-int`` or ``positive-odd-int`` and deciding
+what helper function to call based on that. That seems like something we'll do
+often. Imagine::
+
+    def/fn open/url/http   ([n http-address])   ->   ...
+    def/fn open/url/https  ([n https-address])  ->  ...
+    def/fn open/url/gopher ([n gopher-address]) -> ...
+
+    def/fn open/url ([n url])- >
+        cond ->
+            is? n http-address   ->
+                open/url/http   n
+            is? n https-address  ->
+                open/url/https  n
+            is? n gopher-address ->
+                open/url/gopher n
+            #t ->
+                signal '(error argument) "Unsupported protocol"
+
+How can we make this more convenient? Well, we can, using types, because I lied
+to you (just a bit) when I said that the square brackets were like asserts. In
+fact, they're more like the giant ``cond`` that you see here, in that one can
+make decisions based on them. Basically, one can create two functions, with the
+same name, but where the arguments have different types, and Forp will choose
+which to call::
+
+    def/fn collatz ([n positive-even-int]) ->
+        / n 2
+
+    def/fn collatz ([n positive-odd-int]) ->
+        + (* n 3) 1
+
+Magic! In other languages, this is called variously multiple dispatch, type
+dispatch, or polymorphism.
+
+Priority
+--------
+
+Well, the above, you might say, is a cool feature, but it's easy to break::
+
+    def/fn foo ([n positive-int]) ->
+        + n 1
+
+    def/fn foo ([n positive-odd-int]) ->
+        - n 1
+
+What will ``foo 13`` do? It's both a positive integer and an odd positive
+integer! Surprisingly, this code will do exactly what you expect: call the
+first version of ``foo`` for even integers and the second for odd ones.  How?
+Well, see, I have to confess: I lied to you again. There's more to a type than
+just the ``is?`` function; there's also the ``sub?`` function.  The what
+function? ``sub? [A type] [B type]`` takes two types as arguments and tells you
+whether the first is a `subtype` of the second. Subtypes are easy: ``A`` is a
+subtype of ``B`` if any instance of ``A`` is also and instance of ``B``. In
+practice, Forp uses ``sub?`` to choose which version of a function is more
+specific. As a rule, the version using a subtype is always preferred.
+
+Now, when did we say that ``positive-odd-int`` is a subtype of
+``positive-int``?  Oh, that's simple convenience: ``type/restrict`` ensures
+that the new type is a subtype of the one you're basing it off of.
+
+Turns out, there's a generalization of the Collatz map to all real numbers:
+:math:`f(x) = {1 \over 2} x \cos^2 {\pi \over 2} x + (3x + 1) \sin^2 {\pi \over
+2} x`. Let's add this to our system::
+
+    def/fn collatz ([x float]) ->
+        { {{1/2} * x * {(cos {{pi/2} * x}) ^ 2}}
+        + {{{3*x}+1} * {(sin {{pi/2} * x}) ^ 2}}}
+
+If we call ``collatz 3``, we'll still get 10, as expected, because ``int``
+(and, thus, ``positive-int``, and, thus, ``positive-odd-int``) is a subtype of
+``float``. Calling ``collatz 5.4`` will, on the other hand, call our new
+version, because ``5.4`` is not an integer.
+
+Expression Types
+----------------
+
+Well, we saw just above that we can use types to eliminate some ``assert``
+statements. Can it eliminate others, perhaps? Beyond those tied to arguments?
+Certainly.
+
+An expression can be given a type using the same syntax used elsewhere::
+
+    [(+ 1 2) int]
+
+The above basically asserts that ``(+ 1 2)`` is an instance of ``int``, much
+how ``fn ([n int]) -> ...`` asserts that ``n`` is an instance of ``int``.
+
+Furthermore, the Forp compiler may make use of the type assertions to create
+faster code! What joy! You get checks to ensure that your code is correct,
+and the code also becomes faster!
+
+Finally, we can use this to specify the return value of a function::
+
+    def/fn [foo int] ([a int] [b int]) -> ...
+
+That would say that ``foo`` is a function that takes two integers and returns
+another integer.
+
+Case Study: ``type/restrict``
+-----------------------------
+
+To cement the ideas so far, let's look at how ``type/restrict`` might be
+implemented.
+
+.. note:: There is no reason to suspect that ``type/restrict`` in your version
+    of Forp will actually be implemented this way; the implementor may decide
+    to optimize in some way. We're presenting here a conceptually clean way
+    to write ``type/restrict``, not an optimized way.
+
+Let's go! ::
+
+    def/fn [type/restrict type] ([base type] [f (fn/type obj -> bool)]) ->
+
+So, let's take a look at that signature. We're defining an ordinary function,
+which takes a base type and a function and returns a new type. So far, so good.
+
+Now, notice the ``fn/type``. That's a type constructor, which represents the
+type of functions from its first argument to its second. ``fn ([x A]) -> [y B]``
+has type ``fn/type A -> B``.
+
+Moving onward, ::
+
+    def/fn [type/restrict type] ([base type] [f (fn/type base -> bool)]) ->
+        type ->
+            def/fn [is? bool] ([x base]) ->
+                f x
+
+            def/fn [is? bool] (x) #f
+
+Note: we use types inside our definition of ``is?`` to make the code clearer.
+
+Now onto the ``sub?`` function::
+
+    ...
+            def/fn [sub? bool] ([x type]) ->
+                if (= x *cur/type*) ->
+                    just #t
+                    sub base x
+
+Things to note here: firstly, we are using the variable ``*cur/type*`` to
+denote the type we are defining, just as we can use ``*cur/fn*`` to denote the
+current function inside of ``fn``. Secondly, our condition is: I am a subtype
+of anything that base is a subtype of. Why? Because a restriction of an ``int``
+is a subtype of ``float`` (because ``int`` is). Or, more mathematically,
+subtyping must be transitive (it's a property Forp relies upon); in other
+words, ``sub? A B`` and ``sub? B C`` must imply ``sub? A C``. Finally, note
+that we are adding a special case to ensure that our function is a subtype of
+itself. Not only does this make common sense, it's also another of the
+properties Forp requires of ``sub?``.
+
+Hopefully, this example showed how a basic function returning a type could be
+written.
+
+Type Functions: The Standard Zoo
+--------------------------------
+
+We already saw one of the standard type functions: ``type/restrict``. There
+are... a few more.
+
+``type/= X``
+    The type of all things equal to X. This is more useful than it sounds, so
+    much so that it has its own syntax: ``[X]`` in an argument list (so, just
+    one argument in the square brackets) is the same as ``[_ (type/= X)]``. Why
+    so useful? Well, take the ``type`` macro we used above. It secretly inserts
+    a first argument that is that type, which is why you write ``def/fn is?
+    (x)`` but call ``is? Y x``.
+
+``type/or X Y Z ...``
+    The type of all things of type X or Y or Z. If you put more than two things
+    in the square brackets, you get them ``type/or``\ ed together.
+
+``type/fn f``
+    The precursor to ``type/restrict``, creates a type of things that satisfy
+    a given function. It's effectively the same as ``type/restrict obj f``.
+
+``fn/type A B``
+    Type of functions from ``A`` to ``B``.
+
+``type/type A``
+    Type of types of type A. Read below on metatypes, and then read that three
+    or four times, until you get it.
+
+``type/* . A``
+    The type of all ``n``-elements lists (``n`` being the length of ``A``),
+    where the each of the elements fits the corresponding type in the list
+    ``A``. For example, ``type/* int str`` would describe two-element
+    integer-string pairs.
+
+
+.. todo:: Finish up list.
+
+Traditional Classes
+-------------------
+
+You might be thinking, all right, this is all well and good, but the only reason
+I care about types is because my C++-loving brain wants classes. Do Forpers
+just use ``form``\ s for everything? Because that'd be sort of sad.
+
+No!
+
+In fact, Forp implements a rather standard class-based OO system on top of
+types. Let's look at an example: complex numbers. ::
+
+    def/class Complex --slots (list [x float] [y float]) ->
+        def [new Complex] ([x float] [y float]) ->
+            (set! (*this* 'x) x)
+            (set! (*this* 'y) y)
+
+        def [+ Complex] ([z Complex]) ->
+            new Complex ->
+                + (z 'x) (*this* 'x)
+                + (z 'y) (*this* 'y)
+
+        def [* Complex] ([z Complex]) ->
+            new Complex ->
+                - (* (z 'x) (*this* 'x)) (* (z 'y) (*this* 'y))
+                + (* (z 'x) (*this* 'y)) (* (z 'y) (*this* 'x))
+        
+        ...
+
+Of course, the ``Complex`` class would define many more methods, but the basic
+idea, you already see. How do classes map to underlying types? Simple. First,
+creating an instance of a class uses the Forp ``tag`` primitive to tag a new
+object as a ``Complex`` (or whatever the type is). Then, it sets it up to map
+symbols to some internal slots (that you can also ``set!``). Finally, it uses
+the functions you define (with a special ``*this*`` variable of type
+``Complex``) to provide functionality.
+
+Type Types and Type Type Types and ...
+--------------------------------------
+
+Now, we have all this cool `type` stuff. But now we think back to what we
+discussed before about the functions ``is?`` and ``sub?``: what type would they
+have?
+
+Well, that shouldn't be difficult. ``is?`` must be ``is? [T type] [x obj]``, and
+``sub?`` would have to be ``sub? [T type] [S type]``. Wait a minute, what's that
+``type`` type?
+
+Ah, see, ``type`` is a type of types! Nothing particularly strange about this;
+types are objects, so they can have types as well. Nothing wrong with making
+types of types of types, either. In fact, since ``is? type type``, ``type`` is
+a type of types of types of ... mind blown yet? Even more clearly, ``obj`` is
+an object, so ``is? obj obj``, so ``obj`` is also a type of ....
+
+Overloading
+-----------
+
+Many langauges have these strange little rules for overloading functions. For
+example, in Python, to overload addition, one defines the method ``__add__``.
+One might argue that strange names are acceptable for operators (they're
+different from normal functions anyway), but Python also uses the ``__len__``
+and ``__dir__`` functions to overload the perfectly normal (if built-in)
+functions ``len`` and ``dir``.
+
+In Forp, the type system makes things much simpler. For example, to overload
+``+``, one simply writes::
+
+    def/fn + ([x my-type] [y my-type]) -> ...
+
+You have now quickly and easily defined the addition of two ``my-type``\ s.
+Similarly, one can override any other builtin (the similarity of operators and
+functions helps). Not only that, but you can overload all of the user-defined
+functions as well.
+
+Besides greatly simplifying things, you can even overload a function based on
+something other than the first argument. For example, Python uses the method
+``__radd__`` to add an object *to* something else (as opposed to something else
+*to* an object). In Forp, this is naturally expressed::
+
+    def/fn + (x [y my-type]) -> ...
+
+Specializing Types
+------------------
+
+How would we type something like a homogenous list? Well, since we have to take
+a type (the type of each element) and make a type (the homogenous list type),
+we can use a function from types to types.
+
+Let's make an attempt to write it::
+
+    def/fn list-of ([T type]) ->
+        type/restrict form (fn (x) -> (all (fn (el) (is T el)) x))
+
+This will just require a form to have all elements of type ``T``. Trying it,
+we have::
+
+    forp> is? '(1 2 3) (list-of int)
+    #t
+    forp> is? '(1 2 a) (list-of int)
+    #f
+
+In general, this implementation will work. There's one thing to consider,
+though: is ``list-of T`` a subtype of ``list-of S`` if ``T`` is a subtype of
+``S``? This sounds like it should be so --- after all, a list of integers is
+certainly a list of objects. However, consider the function::
+
+    def/fn append-an-elephant ([l (list-of obj)]) ->
+        push l 'elephant
+
+Trivial, yes, but a valid function nonetheless. Now, look at what happens if we
+try to use this function on a good-ol' list of integers? After all, ``int`` is
+a subtype of ``obj``, so ``list-of int`` should be a subtype of ``list-of obj``.
+But watch what happens::
+
+    forp> set! a '(1 2 3)
+    1 2 3
+    forp> is? a (list-of int)
+    #t
+    forp> append-an-elephant a
+    1 2 3 elephant
+    forp> is? a (list-of int)
+    #f
+
+This fact, that a variable can change type, is completely unintuitive to someone
+coming from a C++ or Java background. In general, it is important to consider
+that a variable can change type; on the other hand, it shouldn't for most uses.
+This problem is not generally solved in type theory; various approaches can be
+attempted, most not fully satisfactory (in type theory, this is called
+`covariance`).
+
+.. todo:: Describe Forp's approach
+
+.. todo:: FINISH

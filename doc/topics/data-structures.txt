@@ -1,0 +1,81 @@
+Forp Data Structures
+====================
+
+Forp has few data structures. In fact, the following is a complete
+list:
+
+* Integers, whose class is ``<integer>``
+* Numbers (floating point), whose class is ``<float>``
+* Booleans and nullable booleans, with types ``<bool>`` and
+  ``<kleene-bool>``.
+* Strings, with type ``<string>``.
+* Symbols, with type ``<symbol>``.
+* Nil, which has type ``<nil>``.
+* Functions, with type ``<fn>``.
+* And forms, with type ``<forms>``.
+
+What About Other Data Types?
+----------------------------
+
+How, for example, would Forp represent an IP address? Let's take the
+built in ``<path>`` type as a pedagogical example. If, in the forp
+shell, you run::
+
+    :forp> set! home-dir <- p"home:"
+    p"/home/pavpanchekha"
+    :forp> is? <path> home-dir
+    #t
+    :forp> is? <string> home-dir
+    #t
+    :forp> untag* <path> home-dir
+    "/home/pavpanchekha"
+
+Your output will vary based on what your home directory actually is;
+the point is that the path ``p"home:"`` is not really a special object
+at all. In fact, it is a string, with a specific tag: ``<path>``. If
+you take a more complicated object --- take, for example, a
+``<login>`` object --- you'll see that it, too, is really one of these
+basic types::
+
+    :forp> set! gmail-login <- login "GMail" "pavpanchekha" "************"
+    #<login title~"GMail" username~"pavpanchekha" password~"************">
+    :forp> for (tag <- tags gmail-login) <-
+         >     untag* tag gmail-login
+         >
+    []
+    :forp> gmail-login
+    [title~"GMail" username~"pavpanchekha" password~"************"]
+
+In this case, after removing all tags from a ``<login>`` object, we
+find that deep down, that object is really just a table.
+
+.. note:: In fact, most objects are, deep down, tables, since most
+   contain several piecies of information. You will occasionally find
+   some objects that, deep down, are actually strings, and sometimes,
+   usually in the code of people who are trying to be clever, find
+   objects based on functions.
+
+What basic data type should you base your fancy new type on? Almost
+certainly a table. Remember that tables and functions are the only
+types that can contain mutable (changeable) data, and it is usually
+very difficult to compare two objects based on functions for
+equality. Thus, unless some other type is clearly a perfect fit (for
+example, a ``<currency>`` type should probably be based on integers),
+pick a table.
+
+Forp provides a tool, ``strip-tags``, in its ``hackery:objects``
+package that does the exact equivalent of the ``for`` loop above:
+removes all tags from an object to leave just the basic data type.
+
+Numbers: ``<float>`` and ``<integer>``
+---------------------------------------
+
+These two types should need little explaining. The standard
+mathematical operation work on both, and division of integers will
+transparently return floating-point numbers. While these may look
+useless as bases for building more types atop, this is not quite
+true. For example, the standard ``concepts:datetime`` module's
+``<datetime>`` objects are simply tagged integers, where the actual
+value of the integer represents the Unix timestamp (in UTC).
+
+

@@ -1,0 +1,52 @@
+A Pattern Matching Library for Forp
+===================================
+
+.. highlight:: tcl
+
+Lists are the standard data type in Forp. This means that often times, the
+Forp programmer will have to extract data from lists. Here, we'll develop,
+step by step, a library to help with that.
+
+What We Want
+------------
+
+Ideally, we'll want to write something like this::
+
+    match/list ->
+        (user (.name .password)) ->
+            retrieve-details name passwords
+        (file .name) ->
+            open/file name
+        ...
+
+In other words, every argument to ``match/list`` is a list, the first element
+of which is the actual pattern, and the others being the body of a function to
+execute in case of that pattern. Let's get cracking!
+
+First Steps
+-----------
+
+We're going to write this in two parts. First, we're going to have a function
+to take a pattern and return a `match function`: a function that will match its
+input and return a hash mapping names to values. ::
+
+    forp> set! f -> match-fn '(user (.name .password))
+    forp> f '(user (Bob 123456))
+    hash --name Bob --password 123456
+
+Let's see how we'd write that. First, because patterns can be recursive, we're
+going to want to write this recursively. And second, our base case is simple:
+a match function for just ``.X`` returns ``hash --X ...`` and for ``X`` asserts
+that the object to match is just ``'X`` and returns an empty ``hash``. ::
+
+    def/fn match-fn ([template List]) ->
+        if {(template 0) = ('.X 0)} ->
+            fn (object) -> hash (template 1) -> object
+            let (child-fns -> map match-fn template) ->
+                fn ([object List]) ->
+                    fold merge (zip/apply child-fns object)
+
+    def/fn match-fn (template) ->
+        fn ([template]) -> hash
+
+.. todo:: NOT DONE

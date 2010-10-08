@@ -1,0 +1,77 @@
+The Forp Programming Language
+=============================
+
+Forp is a new programming language whose goal is to maximize program
+maintainability and readability. Forp is a language that struggles to
+create readable programs that are understandable with as little
+background as possible, from a simple syntax to providing powerful
+abstractions to allow common patterns to be encapsulated into easy to
+describe units.
+
+Forp also maintains a focus on *informality, simplicity, and
+dynamicity*. Forp is Lisp- and Python-inspired --- in particular, the
+core is Lispish, the syntax is highly Pythonic, and the ideas are a meld
+of the two.
+
+.. toctree::
+    :maxdepth: 1
+    :glob:
+
+    *
+
+Tutorials
+---------
+
+If you're new to Forp, the tutorials here describe how to use Forp for
+common situations. If you're new to programming at large, to Forp, or
+even just to using Forp for a specific domain, like web applications,
+the tutorials here should help out.
+
+.. toctree::
+    :maxdepth: 1
+    :glob:
+
+    tutorials/*
+
+Topics
+------
+
+Since Forp has novel features, many of which differ from those of the
+so-called "mainstream" programming languages. These features are
+described here.
+
+.. toctree::
+    :maxdepth: 1
+    :glob:
+
+    topics/*
+
+Examples
+--------
+
+A language is defined by more than the hard features: best practices,
+community standards, and even common knowledge. It's not really possible
+to get these down on paper and inculcate them in everyone who learns the
+language, we instead provide here examples of Forp code that is
+developed in accordance of these practices, hopefully describing them as
+we go.
+
+.. toctree::
+    :maxdepth: 1
+    :glob:
+
+    examples/*
+
+Standard Library
+----------------
+
+Like most modern languages, Forp comes with a large standard library, including
+functions to read web pages, interact with the operating system, and use common
+algorithms. Forp aims to be (taking a page from Python's book) a "batteries
+included" language.
+
+.. toctree::
+    :maxdepth: 1
+    :glob:
+
+    libraries/*

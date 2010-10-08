@@ -1,0 +1,355 @@
+Forp Syntax: A Short Guide
+==========================
+
+.. highlight:: tcl
+
+This document is intended to be readable by those new to Forp, but also
+precise enough for someone looking to parse the language. As such, it is
+necessarily too in-depth at some points. If you forgot what a certain
+symbol does, it is probably best to use your browser's :guilabel:`Find`
+function. But really, Forp has so little syntax that you'll likely not
+need to read this page more than once.
+
+Base Level: Characters on a Screen
+----------------------------------
+
+Core: Words and Functions
+:::::::::::::::::::::::::
+
+A `word`, the analog of an identifier in other languages, may be made
+up of any non-ASCII7 character, upper and lower-case letters, numbers,
+and any of the following: ``!@$%^*_-?/\\+=<>``. See
+:doc:`naming-conventions` for conventional uses of these punctuation
+characters. Words cannot *begin* with a number. Upper case letters are
+normalized to lower case; however, Forp is not entirely
+case-insensitive.
+
+Words can also contain the `package specifier` ``:``. Words without a
+package specifier are assumed to be in the default package. For
+example, ``www:open`` and ``open`` are different words at first,
+because the default default package is the empty package (thus,
+``open`` refers to ``:open`` are the same); however, if one executes
+``package www`` to set ``www`` as the default package, they become the
+same. Note that a package name can be empty, as in ``:open``. The
+empty package contains all of the default bindings (for example, the
+``package`` command is really ``:package``). Packages are always
+named with lower-case letters. Thus, if an upper case letter precedes
+a colon, it is expanded into the name of the first package whose name
+begins with that letter. For example::
+
+    :forp> import (protocol http)
+    #<module protocol http>
+    :forp> import (protocol smtp)
+    #<module protocol smtp>
+    :forp> import (format html)
+    #<module format mail>
+    :forp> `PH:connect
+    protocol:http:connect
+    :forp> `PS:connect
+    protocol:smtp:connect
+    :forp> `FH:parse
+    format:html:parse
+
+The basic Forp syntax consists of `commands` which are written as
+space-separated lists beginning on new lines. The first element in this
+list refers to the command to execute, the rest the arguments.
+
+Scalar Data
+:::::::::::
+
+Forp supports several types of scalar data. Strings are introduced by
+surrounding the contents with double quotes (``"``). Strings can take an
+optional single-lower-case-letter prefix; for example::
+
+    :forp> is? <path> p"/usr/bin/forp"
+    #t
+    :forp> print r"A\nb"
+    A\nb
+    :forp> is? <regex> x"^a[ab]*b$"
+    #t
+
+Integers are written as one would expect. They can take an optional
+prefix consisting of an integer followed by ``r`` --- this integer will
+specify the base in which the actual value (which follows) is specified.
+The highest supported base is 27 (no, not 36, and it's not expected that
+anyone will miss base 28--36). For example::
+
+    :forp> print 132
+    132
+    :forp> print 2r101
+    5
+    :forp> print 3r102
+    11
+    :forp> print 16rff
+    255
+    :forp> print 16rFF
+    255
+    :forp> print 16rFrEr13
+    17
+
+The last example is *very* esoteric, and it is suggested that anyone
+found using it be shot, but it *is* valid Forp syntax. For the confused,
+read it right to left. We are looking for the value of ``13`` in base
+``16rFrE``, which is the value of ``E`` in base ``16rF``, which is the
+value of ``F`` in base 16. That is 15, and ``E`` in base 15 is 14.
+Finally, ``13`` in base 14 is 17.
+
+Floating-point numbers are written using a period (``.``) to separate
+the integral and fractional parts. Either can be omitted. An exponent
+(some call it a `matissa`) can be introduced after the fractional part
+(if any) following the letter ``e``. Since the period is also used as
+the unquoting character (see below, `Quoting and Unquoting`_), make sure
+to separate your floating-point number from any surrounding words with
+spaces.
+
+Both floating-point and integral values may be prefixed with ``-`` or
+``+`` to explicitly state their sign.
+
+Boolean values in Frop come in three varieties: true, false, and
+unknown. In code, these are represented with ``#t``, ``#f``, and ``#?``.
+
+Forp's analog to ``null`` is called ``#0`` (and is pronounced "nil"; it
+has nothing to do with a null form, which is written ``[]``).
+
+Finally, Forp has two infinite values: ``#inf`` and ``-#inf``, which
+represent positive and negative infinity. For complete IEEE
+floating-point compatibility, it also supports ``#nan``. However, no
+calculations not involving ``#nan`` will ever return it, so it is not
+likely to ever be found in code.
+
+Other special floating-point values are also available in Forp: ``#eps``
+for the machine's epsilon (smallest value above 1), ``#max`` for the
+largest expressible floating-point value, and ``#min`` for the smallest
+expressible positive value. Integers are by design arbitrary-size, so
+there is no special value for the maximum integral value. Both of these
+are available in negative versions.
+
+Grouping Constructs and Layout
+::::::::::::::::::::::::::::::
+
+Forp uses two types of grouping construct: parentheses (``()``), and
+ brackets (``[]``). For example::
+
+    if (= a b) (do
+        print "They're equal!"
+        print "Woo Hoo!"
+    ) (do
+        print "Damn it... We'll fix that yet!"
+        set! a b
+    )
+
+    set! c [1 2 3]
+    set! c [(f 1) (f 2) (f 3)]
+    set! c [
+         f 1
+         f 2
+         f 3
+    ]
+
+    set! d [a~1 b~2 c~3]
+    set! d [
+         a ~ 1
+         b ~ 2
+         c ~ 3
+    ]
+
+All of these constructs use `layout`, which defines how indentation is
+used to interpret structure. The ``<-`` digram can also introduce
+layout::
+
+    set! d <- f 1
+    switch d <-
+        1 <-
+            print "It's 1"
+            print "Let's get a cheeseburger"
+        2 <-
+            print "These examples"
+        3 <-
+            print "They're supposed to be nonsensical, aren't they?"
+
+As soon as a ``<-``, ``(``, ``[``, appears, a newline followed by more
+indentation together form a block. In the case of ``<-``, the block
+ends as soon as the indentation decreases again. Otherwise, the block
+ends at the respective closing brace. The indentation may not decrease
+before that point.
+
+If no newline follows ``<-``, it acts until the end of the line.
+
+``()`` introduces a group of statements. For example::
+
+    :forp> 'adsf
+    asdf
+    :forp> '(adsf)
+    (asdf)
+    :forp> '(asdf adsf)
+    (asdf adsf)
+    :forp> '(
+    .....>     asdf adsf
+    .....>     asdf adsf
+    .....> )
+    ((asdf adsf) (adsf adsf))
+
+``[]`` denotes a `table`, whose elements are space-separated. It can
+contain both simple ordered data and elements keyed by some other type. ::
+
+    :forp> print [1 2 3]
+    [1 2 3]
+    :forp> [1 2 3] 1
+    2
+    :forp> sum [1 2 3]
+    6
+    :forp> = [1 2 3] [
+    .....>     - 3 2
+    .....>     + 1 1
+    .....>     / 9 3
+    .....> ]
+    #t
+    :forp> [a~1 b~2 c~3] 'c
+    3
+
+If keyed and unkeyed elements are mixed in the definition, the counter
+for unkeyed elements is independent of the keyed ones. The element in
+any slot of the following table is the slot itself::
+
+    [a~'a 0 b~'b c~'c 1 2 3 d~'d]
+    
+Note that if indentation increases but no layout-beginning construct is
+found, the elements of the line are folded onto the end of the previous
+one. Thus ::
+
+    print
+        "asdf"
+        "asdf"
+
+is equivalent to ::
+
+    print "asdf" "adsf"
+
+Comments
+::::::::
+
+Single-line comments are defined using ``;``; these last until the end
+of the line. A tree of code (that is, a command and all of its
+subcommands) can be commented out using ``#;``. A block can be commented
+out by surrounding it with ``#|`` and ``|#``. Finally, literate
+programming blocks can be defined with ``#>`` and ``<#``. For example,
+the following contains no actual commands::
+
+    ; Line comment
+    ; Another one
+
+    #;print ->
+        + ->
+            f 1
+            f 2
+        - ->
+            f 3
+            f 4
+
+    #|
+    Some random stuff.
+    |#
+
+    #>
+    Don Knuth was right! Literate programming is awesome!
+    <#
+
+In this example, the literate programming block could be extracted by
+another program and used for, for example, documentation.
+
+Quoting and Unquoting
+:::::::::::::::::::::
+
+One can `quote` an expression with ``'`` or ``\```; doing this will
+prevent the execution of the expression, and instead just provide the
+`parse tree` of the expression::
+
+    forp> 'a
+    a
+    forp> '(+ 1 2)
+    (+ 1 2)
+    forp> `(+ 1 2)
+    (+ 1 2)
+
+The only difference between ``'`` and ``\``` is that the second form
+(some call it `quasiquoting`) allows certain parts of the expression to
+be, in effect, empty slots into which you can insert values by way of
+`unquoting`. A subexpression prefixed by ``.`` will be evaluated and
+*then* placed into the quoted expression; one prefixed by ``,`` will be
+evaluated and, assuming it evaluates into a list, array, or hash, which
+it should, spliced into the list. An example would be easier than an
+explanation::
+
+    forp> `(+ ,[1 2 3])
+    (+ 1 2 3)
+    forp> `(+ .[1 2 3])
+    (+ [1 2 3])
+
+The form ``'(...)`` maps to the parse tree ``(:quote (...))``,
+``\`(...)`` to ``(:quote/quasi (...))``, ``.(...)`` to ``(:unquote
+(...)``, and ``,(...)`` to ``(:unquote/list (...))``.
+
+Tagging
+:::::::
+
+All Forp objects have a set of tags. These are often simple symbols,
+though they can be arbitrary objects. Often, these are used to keep
+track of auxiliary attributes. The syntax ``a|b``, which is syntactic
+sugar for ``:tagged a b``, asserts that the object ``a`` possesses the
+tag ``b``; the functions ``tag`` and ``untag`` (and their destructive
+equivalents, ``tag*`` and ``untag*``) can be used to manipulate tags.
+
+Since tags are often used to represent type information, one can use
+``a|b`` as an argument to a function to specify that the object ``a``
+must have type ``b`` (this is often, but not always, equivalent to
+``a`` having tag ``b``).
+
+Parameter Lists
+:::::::::::::::
+
+Parameter lists are used for defining functions. However, functions are
+so central to Forp that the specific syntax of them is important.
+
+Parameter lists are *always* enclosed in parentheses (unlike Scheme,
+where they may be a raw identifier), and can contain::
+
+Regular arguments
+    These must be passed by any callers. They are a simple identifier,
+    perhaps with metadata attached. *get*-style metadata is interpreted
+    as specifying a type for that variable. For example, one may write
+    ``n|Integer`` to specify that ``n`` is of type ``Integer``.
+    *set*-style metadata specifies a constraint --- that that key must
+    be set to that value for that variable. One might, for example, use
+    ``query|String|safe~#t`` to ensure that only safe strings are passed
+    as a query.
+
+Optional arguments
+    Optional arguments are defined by putting an identifier (for the
+    arguments name) followed by a tilde and the default value. Metadata
+    may follow this; it is interpreted as above.
+
+Variable-length argument lists
+    An ampersand (``&``) followed by an identifier specifies that that
+    identifier will receive all non-keyword arguments, as an array. No
+    metadata is allowed anywhere.
+
+Unknown-keyword arguments
+    An ampersand-tilde (``&~``) followed by an identifier specifies that
+    that identifier will receive all keyword arguments not used
+    elsewhere. No metadata is allowed anywhere.
+
+Function Calls
+::::::::::::::
+
+A function is called with a combination of normal and keyword arguments.
+Normal arguments are just space-separated. Keyword arguments are
+specified with an identifier, followed by a tilde and the value. The
+following is a valid function call::
+
+    forp> print "adsf" "adsf" sep~", "
+    adsf, asdf
+
+One Level Up: Special Forms
+---------------------------
+
+.. todo:: Write down

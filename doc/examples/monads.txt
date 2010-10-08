@@ -1,0 +1,186 @@
+Monads in Forp
+==============
+
+.. highlight:: tcl
+
+`What's a monad?` Yeah, by now it's an inside joke in the Haskell community.
+And no, I'm not going to explain. This page is instead for those who already
+know what a monad is, but want to implement them in Forp. At your service! In
+fact, we'll do the whole shebang here --- monads, ``>>=`` operator, even that
+*sick* ``do`` notation. And we'll finish up with a few examples.
+
+Game Plan
+---------
+
+Let's take a look at features we want to implement. First, we want a nice set
+of bind operators::
+
+    forp> >>= (new ListMonad '(1 2 3)) (fn (x) -> new ListMonad {2 * x}) (fn (x) -> new ListMonad {x ^ 2})
+    4 16 36
+    forp> >>  (new ListMonad '(1 2 3)) (fn ()  -> new ListMonad 3)
+    3 3 3
+
+Note that there's no ``return`` alternative because of the weak typing.
+A pity, really. I know.
+
+Anyway, we also want, as promised, a ``do`` notation::
+
+    forp> do ->
+    ....>     set x -> new ListMonad -> list 1 2 3
+    ....>     new ListMonad {2 * x}
+    2 4 6
+
+Finally, we're going to have a few examples, in particular ``ListMonad`` and a
+very basic version of ``IOMonad``.
+
+Representing a Monad
+--------------------
+
+First, let's define a type for all monads to inherit from::
+
+    class Monad ->
+        def/static new (x) -virtual
+
+        def/fn bind (f) -virtual
+        def/fn then (f) -virtual
+
+Next, we want to define ``>>=`` to automatically chomp through any number of
+arguments::
+
+    set! >>= -> fn (& args) -> fold bind args
+    set! >>  -> fn (& args) -> fold then args
+
+Alright, let's implement an example, to show how these definitions play a part.
+
+``ListMonad``
+-------------
+
+How do we implement a ``ListMonad``? Well, that's easy, we just have to fill
+out all of the methods defined above. ::
+
+    class ListMonad -slots '(list) -parents (list Monad) ->
+        def/static new ([x List]) ->
+            set! (get this 'list) x
+
+        def/fn flatten-map (f) ->
+            flatten -> map (fn (el) -> get (f el) 'list) (get this 'list)
+
+        def/fn bind (f) ->
+            new ListMonad -> flatten-map self f
+
+        def/fn then (f) ->
+            bind self -> fn (x) -> f
+
+        def/fn print () ->
+            print (get self 'list)
+
+If you try it out, you'll note that this successfully passes all of the tests
+in our introduction. Now let's get to that ``do`` notation.
+
+``do`` Notation
+---------------
+
+We want to transform ::
+
+    do ->
+        set x -> my-monad
+        set y -> other-fn x
+        raise {x + y}
+
+Into something along the lines of ::
+
+    bind my-monad
+         (fn (x) ->
+             bind (other-fn x)
+                  (fn (y) ->
+                      new XMonad {x + y}))
+
+Sounds like a job for macros! *Away!*
+
+Alright, let's approach this problem rigorously. We want the following two sets
+of rules to be used when rewriting. First of all, we want to transform ::
+
+    do ->
+        stuff
+        ...
+
+into ::
+
+    then stuff ->
+         do ...
+
+and ::
+
+    do ->
+        set var -> stuff
+        ...
+
+into ::
+
+    bind stuff ->
+         fn (var) -> do ...
+
+Note the use of ``set`` as opposed to ``set!``, emphasizing that this ``set``
+is actually purely functional.
+
+Let's get cracking::
+
+    def/macro do (& args) ->
+        if (= (args 0 0) 'set) ->
+            syntax ->
+                bind .(args 0 2) ->
+                     fn (.(args 0 1)) ->
+                        do ,(tail args)
+            ;else
+            syntax ->
+                then .(args 0) ->
+                     do ,(tail args)
+
+Done! Does it work? ::
+
+    forp> do ->
+    ....>     set x -> new ListMonad (list 3 4)
+    ....>     new ListMonad (list 1 2)
+    ....>     new ListMonad (list x 42)
+    (3 42) (3 42) (4 42) (4 42)
+
+Winner! Again note the annoyance of ``return`` not being available.
+Unfortunately, it is impossible to simply implement without static
+typing as Haskell has.
+
+We can fix this with a bit more macro magic --- let's add another
+special command (named ``raise`` to avoid conflicting with the
+function-return operator) by way of a ``raise`` flag, so that one could
+write ::
+
+    forp> do --raise ListMonad ->
+    ....>     set x -> new ListMonad (list 3 4)
+    ....>     raise (list 1 2)
+    ....>     raise (list x 42)
+    (3 42) (3 42) (4 42) (4 42)
+
+How do we implement this? Simple, it's just another case to consider::
+
+    def/macro do (first & body --raise #0) ->
+        case first ->
+            'set ->
+                syntax ->
+                    bind .(first 2) ->
+                         fn (.(first 1)) ->
+                            do ,body
+            'raise ->
+                if raise ->
+                    syntax ->
+                        then (new .raise ,(tail first)) ->
+                             do ,body
+                    ;else
+                    signal '(warning syntax) "`raise` inside `do` block, but no `--raise` defined! Might capture outside variables!"
+            -otherwise ->
+                syntax ->
+                    then .first ->
+                        do .body
+
+Now the above example works beautifully --- the only thing Haskell has
+on us now is that the ``do``\ 's type must be explicitly mentioned.
+
+.. todo:: Implement, for example, a simple IOMonad

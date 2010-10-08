@@ -1,0 +1,197 @@
+Beginning Forp
+==============
+
+If you're here, you're probably interested in learning how to program
+computers. Wonderful! Programming can be one of the most rewarding
+creative pursuits --- you have practically no limits on your creativity,
+and the ability to program often also allows one to be vastly more
+productive, especially in our modern digital world.
+
+What is Programming
+-------------------
+
+The whole point of programming is to describe what *you* want the
+computer to do to the computer, in terms it can understand.
+Fundamentally, the computer understands only a language called `machine
+code`. Many, many years ago, programmers would write this machine code
+directly. The reason we don't do this now is that machine code requires
+you to be very specific and detailed --- one is overwhelmed with detail
+very quickly. It is also very repetitive. This tied to something
+programmers call `abstraction`: how can I package smaller actions
+together into larger ones. For example, one would like to say "download
+this web page", not "open a socket, look up this site on a :abbr:`DNS
+(Domain Name Server)`, send the following request, and so on".
+
+In order to avoid these issues, programmers use what is called a
+`programming language`, which is a sort of translator from a more
+abstract and high-level tongue to the lower level of machine code.
+Languages differ among themselves, much, in fact, like natural
+languages. Technical concepts, for example, are often easier to discuss
+in English, simply because of its richer and more natural vocabulary for
+this domain. Similarly, different languages are used for different
+things. Some languages are more low-level; they're closer to the
+underlying machine code. This gives the programmer more power --- they
+can make use of the detail available in machine code to give more
+precise or faster instructions. Others are higher level: they make it
+easier to express what you want and are generally easier to think about.
+
+Forp, the language this tutorial is written in, is a very high level
+language. In fact, it tries to maximize program readability and
+maintainability; thus, it tries to mimic how we humans think about
+problems, at the cost of giving away some of the power to control the
+details of how the computer operates.
+
+All this can be explained in more detail --- language design is a
+fascinating business --- but you didn't come here for pontification; you
+came here to learn to program. Let's begin.
+
+Introducing Yourself to You Computer
+------------------------------------
+
+The first thing you'll want to do is to download Forp. Remember that
+Forp is really a translator and as such may not come with your computer.
+You can visit the :doc:`/forp/download` page to figure out how.
+
+Once you do that, run the :guilabel:`Forp` application. In other places,
+you may see reference to a :command:`forp shell` or :command:`forp repl`
+command. This is another way of running Forp. Generally, you can replace
+these references with just running the :guilabel:`Forp` application.
+
+Once you do this, you should see a window most of which is taken up by a
+white box with the text ``forp>``, Forp's  `prompt`. This is Forp asking
+you for a command. Commands to the computer are written in plain text,
+generally with the name of the command followed by a set of `arguments`,
+or objects somehow involved in that command. Let's begin with a very
+simple command, ``print``. Make your window match the following example,
+by typing the lines after the ``forp>`` prompt and pressing :kbd:`Enter`
+to end a line::
+
+    forp> print "Hello, world!"
+    Hello, world!
+    forp> print "My name is" "<insert name here>"
+    My name is <insert name here>
+
+The command ``print`` prints some text to the same window that you type
+the commands into. To go into detail, you first asked Forp to perform
+the command ``print`` with a single argument, ``"Hello, world!"``.
+Arguments are separated by spaces; you can use more than one space if
+you wish. When you enclose some text in double quotes (``"``), you are
+making it into a ``string``, a Forp term for literal text. (``string``
+is short for `text string`.) Then, you asked Forp to print two strings:
+one reading ``My name is`` and another with your name. Note how the two
+arguments are separated by a single space --- this is the standard
+convention in Forp.
+
+Strings aren't the only types that Forp understands. You can enter
+numbers as well::
+
+    forp> print 12 13.4 15e3
+    12 13.4 15000
+
+The last of those, ``15e3``, represents 15 times ten to the third power,
+or 15 000.
+
+There are many other types as well. For example, Forp understands lists,
+tables (called `hash`\ es), files, folders, web pages, and many more.
+For now, though, we'll stick with these.
+
+Now, since we have numbers, we should be able to do some arithmetic
+with them::
+
+    forp> + 1 2
+    3
+    forp> * (+ 5 6) (^ 6 2)
+    396
+    forp> + "Bob" "Dole"
+    "BobDole"
+
+Note that as before, we write the command first, and arguments after it.
+While this may seem "unnatural", given its difference from normal
+mathematical notation, it is also more consistent with the rest of Forp.
+You'll learn to love it, I promise.
+
+Also note that you can add strings; it's the same as joining the strings
+together.
+
+You can also ask the computer some basic questions::
+
+    forp> < 1 2
+    #t
+    forp> > 3 5 6 8 1
+    #f
+
+The special values ``#t`` and ``#f`` mean truth and falsehood,
+respectively. You are asking the computer first whether 1 is less than
+2; this is true. Next, you are asking the computer whether 5 is greater
+than 3, and 6 greater than 5 and ... --- in other words, whether "3 5 6
+8 1" is increasing order. Unfortunately, that "1" at the end really
+messes things up, and so the statement is false.
+
+Our First Useful Program
+------------------------
+
+Take a look at the following program. We'll examine it step by step in
+just a second; but for now, try to get a general feel for what the
+program does, and don't worry if you don't succeed. ::
+
+    import (math random)
+
+    set! number -> random.int 100
+    print "I've thought of a number between 0 and 99"
+
+    set! guessed? -> #f
+    while (not guessed?) ->
+        let (guess -> read int "What's your guess? ") ->
+            if (< guess number) ->
+                print "Too high!"
+                print "Too low!"
+    print "You guessed it!"
+
+If you want to try the program, you have to use the menu to create a new
+file (:menuselection:`File --> New`), copy the above program to that
+window, and then press the :guilabel:`Run` button.
+
+If you try, you will see that this program implements a sort of guessing
+game. Let's go through this step by step.
+
+First, the line ::
+
+    import (math random)
+
+tells Forp to `import` a library --- that is, it tells Forp that our
+program requires some specific functionality. In this case, that
+functionality is generating random numbers; it so happens that the name
+of this functionality is ``(math random)``. In general, all library
+names come surrounded in parentheses and with parts separated by spaces.
+
+The next line sets a `variable`::
+
+    set! number -> random.int 100
+
+What is a variable? It's very simple, really: it's a name that holds a
+value. Since it can change (`vary`) it's called a `variable`. Let's take
+a quick look particularly at variables::
+
+    forp> set! number -> - (* 6 6) 19
+    17
+    forp> print number
+    17
+    forp> * number number
+    289
+    forp> set! number 3
+    3
+    forp> print number
+    3
+
+Here, you first told Forp to make the variable name ``number`` hold the
+value of ``- (* 6 6) 19`` (which, incidentally, is 17), using the
+command ``set!``. Why the question mark, you may wonder? Well, this
+basically means that this command has some sort of residual effects; in
+this case, those are defining the variable ``number`` and setting it to
+17. Now ``number`` refers to 17, so when we try to print ``number`` or
+multiply it by itself, the effect is the same as printing 17 or
+multiplying that by itself.
+
+Next, we set ``number`` to 3, again using the command ``set!``. Now, you
+may wonder, why do we use an arrow (``->``) the first time but not the
+second?

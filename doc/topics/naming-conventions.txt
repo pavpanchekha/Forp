@@ -1,0 +1,6 @@
+Naming Conventions for Forp Identifiers
+---------------------------------------
+
+Almost all Forp identifiers consist purely of lower-case letters and
+symbols. Upper case letters are thus normalized to lower case in an
+identifier.

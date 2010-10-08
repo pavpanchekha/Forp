@@ -1,0 +1,14 @@
+Forp Examples
+=============
+
+Forp is different from many of today's mainstream languages. Contained
+here are several examples of Forp software developed according to best
+practices; the examples are described and documented to help new Forp
+programmers understand what "idiomatic" Forp looks like.
+
+.. toctree::
+    :maxdepth: 1
+    :glob:
+
+    *
+
