@@ -1,0 +1,29 @@
+
+defstruct node contents yes no
+
+defvar *nodes* {}
+
+defun defnode (name conts & opts) ->
+    let ((yes -> opts 0) (no  -> opts 1)) ->
+        setf (gethash name *nodes*) ->
+            make-node contents~conts yes~yes no~no
+
+defnode 'people "Is the person a man?" 'male 'female
+defnode 'male "Is he living?" 'liveman 'deadman
+defnode 'deadman "Was he American?" 'us 'them
+defnode 'us "Is he on a coin?" 'coin 'cidence
+defnode 'coin "Is the coin a penny?" 'penny 'coins
+defnode 'penny 'lincoln
+
+defun run-node (name) ->
+    let ((n -> gethash name *nodes*)) ->
+        cond ->
+            (node-yes n) ->
+                format #t "~A~%>> " -> node-contents n
+                case (read) ->
+                    yes -> run-node -> node-yes n
+                    #t  -> run=node -> node-no  n
+            #t ->
+                node-contents n
+
+obj 'method <- arg1 arg2 arg3
