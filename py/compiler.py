@@ -19,7 +19,9 @@ class Compiler(object):
         raise SyntaxError("Unknown variable `%s`" % ":".join(ast.obj.s), (file, ast.meta["row"], ast.meta["col"], ":".join(ast.obj.s)))
 
     def is_native(self, ast):
-        if len(ast.obj.s) == 1:
+        if not isinstance(ast.obj, common.Symbol):
+            return False
+        elif len(ast.obj.s) == 1:
             name = ast.obj.s[0]
         elif len(ast.obj.s) == 2 and ast.obj.s[0] in ("", "@"):
             name = ast.obj.s[1]
@@ -54,7 +56,7 @@ class Compiler(object):
 
     def compile_set(self, ast):
         if len(ast.l) != 3:
-            raise SyntaxError("`set!` takes three arguments", (file, ast.meta["row"], ast.meta["col"], "set!"))
+            raise SyntaxError("`set!` takes two arguments", (file, ast.meta["row"], ast.meta["col"], "set!"))
         if not isinstance(ast.l[1].obj, common.Symbol):
             raise NotImplementedError("`set!` currently only supports symbols", (file, ast.l[1].meta["row"], ast.l[1].meta["col"], ""))
 
@@ -63,7 +65,7 @@ class Compiler(object):
 
     def compile_declare(self, ast):
         if any(not isinstance(arg.obj, common.Symbol) for arg in ast.l[1:]):
-            raise SyntaxError("Can only `@declare` symbols", (file, ast.l[1].meta["row"], ast.l[1].meta["col"]))
+            raise SyntaxError("Can only `@:declare` symbols", (file, ast.l[1].meta["row"], ast.l[1].meta["col"]))
 
         for symbol in ast.l[1:]:
             self.symbol_table[0].append(symbol.obj.s[0])
