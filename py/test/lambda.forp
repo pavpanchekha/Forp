@@ -1,0 +1,6 @@
+@:declare id talk
+
+set! id <- fn (x) x
+
+print <- id 3
+

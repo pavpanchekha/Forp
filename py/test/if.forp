@@ -1,0 +1,4 @@
+if (= 2 2) <-
+    print "Two equals 2!"
+    print "Two doesn't equal 2!"
+

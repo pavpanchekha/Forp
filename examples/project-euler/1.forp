@@ -1,0 +1,8 @@
+
+set! sum 0
+for (n <- range 1000) <-
+    if (or (divides? 3 n} (divides? 5 n)) <-
+       apply! (+ n) sum
+
+assert (= sum 233168)
+output sum

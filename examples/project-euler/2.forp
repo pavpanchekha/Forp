@@ -1,0 +1,9 @@
+
+set! sum   <- 0
+set! [a b] <- [1 0]
+while (< a 1,000,000) <-
+    apply! (+ 3) sum
+    set! [a b] <- [(+ a b) b]
+
+assert (= sum 4613732)
+output sum

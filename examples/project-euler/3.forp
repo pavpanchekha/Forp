@@ -1,0 +1,7 @@
+
+set! primes <- [2]
+set! N      <- 600851475143
+
+set! candidate <- 3
+while (< candidate N) <-
+    

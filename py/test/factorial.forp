@@ -1,0 +1,7 @@
+@:declare factl
+
+set! factl <- fn (n) <-
+    if (= n 0) 1 <-
+        * n <- factl <- - n 1
+
+print <- factl 5
