@@ -1,0 +1,13 @@
+@:declare f yin yang
+
+set! f <- fn (return) <-
+    return 2
+    just 3
+
+print <- f just
+print <- @:call/cc f
+
+set! yin  <- (fn (cc) (print 1) cc) <- @:call/cc just
+set! yang <- (fn (cc) (print 2) cc) <- @:call/cc just
+
+yin yang
