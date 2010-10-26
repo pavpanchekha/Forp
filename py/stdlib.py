@@ -17,5 +17,6 @@ stdlib = OrderedDict([
     ("/", operator.div),
     ("=", operator.eq),
     ("print", opprint),
-    ("true?", bool)])
+    ("true?", bool),
+    ("just", lambda x: x)])
           

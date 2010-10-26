@@ -1,15 +1,27 @@
 DEBUG = False
 
-from collections import namedtuple
 from datastructs import Cons
 T, F, Q = "#t", "#f", "#q"
 
 class HALT(Exception): pass
-Frame = namedtuple("Frame", ["stack", "fn", "pc", "context", "pcontext"])
+class Frame(object):
+    __slots__ = ["stack", "fn", "pc", "context", "pcontext"]
+    def __init__(self, stack, fn, pc, context, pcontext):
+        self.stack = stack; self.fn = fn; self.pc = pc
+        self.context = context; self.pcontext = pcontext
+    def __repr__(self):
+        return "%s{%s, %s}" % (self.fn, self.stack, self.context)
 
-def print_frame(frame):
-    return "%s{%s, %s}" % (frame.fn, frame.stack, frame.context)
-Frame.__str__ = Frame.__repr__ = print_frame
+class Func(object):
+    __slots__ = ["frame", "continuation"]
+    def __init__(self, frame, continuation):
+        self.frame = frame
+        self.continuation = continuation
+    def __repr__(self):
+        if self.continuation is not None:
+            return str(self.frame) + "*"
+        else:
+            return str(self.frame)
 
 import stdlib
 class VM(object):
@@ -23,7 +35,7 @@ class VM(object):
     def step(self, frames):
         frame = frames.car
         inst = self.code[frame.pc][0]
-        if DEBUG: print "  " * (len(frames) - 1), ":".join(self.code[frame.pc]), frame.context, frame.stack
+        if DEBUG: print "%03d" % frame.pc, "  " * (len(frames) - 1), ":".join(self.code[frame.pc]), frame.context, frame.stack
 
         if hasattr(self, "h" + inst):
             return getattr(self, "h" + inst)(frame, frames, *self.code[frame.pc][1:])
@@ -77,10 +89,38 @@ class VM(object):
 
         if callable(fn):
             return Cons(Frame(Cons(fn(*args), stack), frame.fn, frame.pc+1, frame.context, frame.pcontext), frames.cdr)
-        elif isinstance(fn, Frame):
+        elif isinstance(fn, Func) and fn.continuation is None:
+            fn = fn.frame
             return Cons(Frame(fn.stack, fn.fn, fn.pc, args + fn.context[len(args):], fn.pcontext), Cons(Frame(stack, frame.fn, frame.pc+1, frame.context, frame.pcontext), frames.cdr))
+        elif isinstance(fn, Func) and fn.continuation is not None:
+            tail = fn.continuation
+            fn = fn.frame
+            assert len(args) == 1, "Calling continuation with multiple arguments is illegal!"
+            return Cons(Frame(Cons(args[0], fn.stack), fn.fn, fn.pc, fn.context, fn.pcontext), Cons(Frame(stack, frame.fn, frame.pc+1, frame.context, frame.pcontext), tail))
         else:
-            print fn
+            print "ERR", fn
+
+    def hCALLPOP(self, frame, frames, n):
+        n = int(n)
+        fn = frames[1].stack.car
+        stack = frame.stack.cdr
+        args = []
+        for i in range(n):
+            args.append(stack.car)
+            stack = stack.cdr
+
+        if callable(fn):
+            return Cons(Frame(Cons(fn(*args), stack), frame.fn, frame.pc+1, frame.context, frame.pcontext), frames.cdr.cdr)
+        elif isinstance(fn, Func) and fn.continuation is None:
+            fn = fn.frame
+            return Cons(Frame(fn.stack, fn.fn, fn.pc, args + fn.context[len(args):], fn.pcontext), Cons(Frame(stack, frame.fn, frame.pc+1, frame.context, frame.pcontext), frames.cdr.cdr))
+        elif isinstance(fn, Func) and fn.continuation is not None:
+            tail = fn.continuation
+            fn = fn.frame
+            assert len(args) == 1, "Calling continuation with multiple arguments is illegal!"
+            return Cons(Frame(Cons(args[0], fn.stack), fn.fn, fn.pc, fn.context, fn.pcontext), Cons(Frame(stack, frame.fn, frame.pc+1, frame.context, frame.pcontext), tail))
+        else:
+            print "ERR", fn
 
     def hGOTO(self, frame, frames, delta):
         delta = int(delta)
@@ -121,7 +161,7 @@ class VM(object):
         delta = int(delta)
 
         nctx = [None] * n
-        newframe = Frame(None, "", frame.pc + delta, nctx, frame)
+        newframe = Func(Frame(None, "", frame.pc + delta, nctx, frame), None)
         # Error, replace fn with the frame we're making. Can't figure out how.
         return Cons(Frame(Cons(newframe, frame.stack), frame.fn, frame.pc+1, frame.context, frame.pcontext), frames.cdr)
 
@@ -132,6 +172,11 @@ class VM(object):
             return Cons(Frame(Cons(top, f.stack), f.fn, f.pc, f.context, f.pcontext), frames.cdr.cdr)
         else:
             raise HALT, frame.stack.car
+
+    def hCPCC(self, frame, frames, n):
+        n = int(n)
+        newframe = Func(Frame(frame.stack, frame.fn, frame.pc + n, frame.context, frame.pcontext), frames.cdr)
+        return Cons(Frame(Cons(newframe, frame.stack), frame.fn, frame.pc + 1, frame.context, frame.pcontext), frames.cdr)
 
 def read(stream): # TODO: Properly parse PUSH instructions
     n = int(stream.readline().strip())
