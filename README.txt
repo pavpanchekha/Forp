@@ -14,17 +14,4 @@ core is Lispish, the syntax is highly Pythonic, and the ideas are a meld
 of the two.
 
 For more, please visit the `Forp homepage
-<http://panchekha.no-ip.com:8082/forp>`_.
-
-Implementation
---------------
-
-In this distribution are two folders: ``compiler`` and ``vm``. The ``vm``
-folder contains the Forp runtime, written in Haskell (for speed and ease). The
-``compiler`` folder contains the Forp compiler, written in Python (for ease).
-It is expected that Forp will eventually be ported to the .NET/Mono runtime for
-added speed and to reduce the burden of supporting our own runtime; once this
-happens, the ``vm`` folder will disappear.
-
-Currently, the ``vm`` folder is entirely empty and the ``compiler`` folder
-contains only a very incomplete compiler --- only the parser is complete.
+<http://pavpanchekha.mit.edu`_.
