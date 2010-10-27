@@ -102,7 +102,7 @@ class VM(object):
 
     def hCALLPOP(self, frame, frames, n):
         n = int(n)
-        fn = frames[1].stack.car
+        fn = frame.stack.car
         stack = frame.stack.cdr
         args = []
         for i in range(n):
@@ -110,10 +110,12 @@ class VM(object):
             stack = stack.cdr
 
         if callable(fn):
-            return Cons(Frame(Cons(fn(*args), stack), frame.fn, frame.pc+1, frame.context, frame.pcontext), frames.cdr.cdr)
+            frame2 = frames[1]
+            return Cons(Frame(Cons(fn(*args), frame2.stack), frame2.fn, frame2.pc, frame2.context, frame2.pcontext), frames.cdr.cdr)
         elif isinstance(fn, Func) and fn.continuation is None:
             fn = fn.frame
-            return Cons(Frame(fn.stack, fn.fn, fn.pc, args + fn.context[len(args):], fn.pcontext), Cons(Frame(stack, frame.fn, frame.pc+1, frame.context, frame.pcontext), frames.cdr.cdr))
+            frame2 = frames[1]
+            return Cons(Frame(fn.stack, fn.fn, fn.pc, args + fn.context[len(args):], fn.pcontext), Cons(Frame(stack, frame2.fn, frame2.pc, frame2.context, frame2.pcontext), frames.cdr.cdr))
         elif isinstance(fn, Func) and fn.continuation is not None:
             tail = fn.continuation
             fn = fn.frame
