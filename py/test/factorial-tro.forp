@@ -1,0 +1,10 @@
+@:declare factl factl%
+
+set! factl <- fn (n) <-
+     factl% n 1
+
+set! factl% <- fn (n acc) <-
+     if (= n 0) acc <-
+         factl% (- n 1) (* acc n)
+
+print <- factl 10000

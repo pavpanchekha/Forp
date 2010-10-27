@@ -19,9 +19,9 @@ class Func(object):
         self.continuation = continuation
     def __repr__(self):
         if self.continuation is not None:
-            return str(self.frame) + "*"
+            return "<cont>"
         else:
-            return str(self.frame)
+            return "<fn>"
 
 import stdlib
 class VM(object):
@@ -29,13 +29,16 @@ class VM(object):
         self.code = bytecode
 
     def mk_state(self, n):
-        stdlibframe = Frame([], None, 0, stdlib.stdlib.values(), None)
+        # stdlibframe has None as the pc to catch errors early
+        stdlibframe = Frame("<stdlibframe>", None, None, stdlib.stdlib.values(), None)
         return Cons(Frame(None, None, 0, [None]*n, stdlibframe), Cons(stdlibframe, None))
     
     def step(self, frames):
         frame = frames.car
         inst = self.code[frame.pc][0]
-        if DEBUG: print "%03d" % frame.pc, "  " * (len(frames) - 1), ":".join(self.code[frame.pc]), frame.context, frame.stack
+        if DEBUG:
+            print "\t", " :: ".join(map(str, [(frame.stack, frame.pc) for frame in frames.__list__()]))
+            print "%03d" % frame.pc, "  " * (len(frames) - 1), ":".join(self.code[frame.pc]), frame.context, frame.stack
 
         if hasattr(self, "h" + inst):
             return getattr(self, "h" + inst)(frame, frames, *self.code[frame.pc][1:])
