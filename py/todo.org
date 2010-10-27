@@ -1,0 +1,19 @@
+Todo List
+=========
+
+* Virtual Machine
+** DONE Call/cc
+   - State "DONE"       from "TODO"       [2010-10-26 Tue 15:37]
+** TODO Figure out multimethods
+* Compiler
+** DONE Tail-calls
+   - State "DONE"       from "TODO"       [2010-10-26 Tue 20:40]
+* Analyzer
+** TODO Begin analyzer
+** TODO Type inferencer
+* Performance
+Currently, we're seeing a 117% overhead over Python. This is good,
+because this means that a rewrite into, say, Haskell or Go or D will
+likely result in an acceptable, Python-order runtime. Perhaps even
+faster-than-python given the cleaner semantics of Forp. Or, perhaps
+slower due to the reliance on multimethods. Who knows!
