@@ -1,8 +1,22 @@
 
-set! sum 0
+; First try, iterative
+def out 0
 for (n <- range 1000) <-
-    if (or (divides? 3 n} (divides? 5 n)) <-
-       apply! (+ n) sum
+    if (or (divides? 3 n) (divides? 5 n)) <-
+       apply! (+ n) out
 
-assert (= sum 233168)
-output sum
+; Second try, using collections
+
+def/fn my-test (n) <-
+    or (divides? 3 n) (divides? 5 n)
+
+def out <-
+    range 1000 -> filter my-test -> sum
+
+; Third try, using amb
+
+def out <- sum <-
+    amb/all (range 1000) <-
+        require <- divides? 3 n
+        require <- divides? 5 n
+

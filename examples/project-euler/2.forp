@@ -1,9 +1,29 @@
 
-set! sum   <- 0
-set! [a b] <- [1 0]
-while (< a 1,000,000) <-
-    apply! (+ 3) sum
+; First try, iterative
+
+def out   0
+def [a b] [1 0]
+while (< a 4,000,000) <-
+    if (even? a) <- inc! out a
     set! [a b] <- [(+ a b) b]
 
-assert (= sum 4613732)
-output sum
+; Second try, using streams
+
+def fibs <-
+    stream 1 2 &(+ fibs (tail fibs))
+
+def out 0
+for (i fibs) <-
+    if (> i 4,000,000) <- break
+    if (even? i) <- inc! out a
+
+; Third try, using collections
+
+def fibs <-
+    stream 1 2 &(+ fibs (tail fibs))
+
+def out <-
+    fibs -> take/while (fn (n) (< n 4,000,000))
+         -> filter even?
+         -> sum
+
