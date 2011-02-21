@@ -1,4 +1,4 @@
-DEBUG = False
+DEBUG = True
 
 from datastructs import Cons
 T, F, Q = "#t", "#f", "#q"
@@ -37,8 +37,8 @@ class VM(object):
         frame = frames.car
         inst = self.code[frame.pc][0]
         if DEBUG:
-            print "\t", " :: ".join(map(str, [(frame.stack, frame.pc) for frame in frames.__list__()]))
-            print "%03d" % frame.pc, "  " * (len(frames) - 1), ":".join(self.code[frame.pc]), frame.context, frame.stack
+            #print "\t", " :: ".join(map(str, [(frame.stack, frame.pc) for frame in frames.__list__()]))
+            print "% 3d" % frame.pc + "  " * (len(frames) - 2), ":".join(map(str, self.code[frame.pc])), frame.context, frame.stack
 
         if hasattr(self, "h" + inst):
             return getattr(self, "h" + inst)(frame, frames, *self.code[frame.pc][1:])
@@ -125,7 +125,7 @@ class VM(object):
             assert len(args) == 1, "Calling continuation with multiple arguments is illegal!"
             return Cons(Frame(Cons(args[0], fn.stack), fn.fn, fn.pc, fn.context, fn.pcontext), Cons(Frame(stack, frame.fn, frame.pc+1, frame.context, frame.pcontext), tail))
         else:
-            print "ERR", fn
+            print "ERR: Not a function:", fn
 
     def hGOTO(self, frame, frames, delta):
         delta = int(delta)
@@ -176,7 +176,7 @@ class VM(object):
             f = frames.cdr.car
             return Cons(Frame(Cons(top, f.stack), f.fn, f.pc, f.context, f.pcontext), frames.cdr.cdr)
         else:
-            raise HALT, frame.stack.car
+            raise HALT, frames
 
     def hCPCC(self, frame, frames, n):
         n = int(n)
