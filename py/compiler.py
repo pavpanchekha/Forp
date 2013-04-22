@@ -5,7 +5,7 @@ import sys
 class Compiler(object):
     special_forms = {
         "set!": "set", "declare": "declare", "fn": "fn", "if": "if",
-        "call/cc": "callcc",
+        "call/cc": "callcc", "quote": "quote"
     }
 
     def __init__(self, file):
@@ -53,6 +53,9 @@ class Compiler(object):
             return [("GET", n, l)]
         else:
             raise Exception(ast)
+
+    def compile_quote(self, ast, tail=False):
+        return [("PUSH", ast.obj)]
 
     def compile_set(self, ast, tail=False):
         if len(ast.l) != 3:
@@ -129,7 +132,7 @@ class Compiler(object):
         if len(ast.l) != 2:
             raise SyntaxError("`@:call/cc` takes two arguments", (file, ast.meta["row"], ast.meta["col"], "call/cc"))
         body = self.compile_expr(ast.l[1])
-        return body + [("CPCC", 3), ("ROT",), ("CALL", 1)]
+        return body + [("PUSHCC", 3), ("ROT",), ("CALL", 1)]
 
     def compile(self, ast):
         """

@@ -178,7 +178,7 @@ class VM(object):
         else:
             raise HALT, frames
 
-    def hCPCC(self, frame, frames, n):
+    def hPUSHCC(self, frame, frames, n):
         n = int(n)
         newframe = Func(Frame(frame.stack, frame.fn, frame.pc + n, frame.context, frame.pcontext), frames.cdr)
         return Cons(Frame(Cons(newframe, frame.stack), frame.fn, frame.pc + 1, frame.context, frame.pcontext), frames.cdr)
