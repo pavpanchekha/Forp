@@ -13,5 +13,4 @@ dynamicity*. Forp is Lisp- and Python-inspired --- in particular, the
 core is Lispish, the syntax is highly Pythonic, and the ideas are a meld
 of the two.
 
-For more, please visit the `Forp homepage
-<http://pavpanchekha.mit.edu`_.
+For more, please visit the [Forp homepage](http://pavpanchekha.mit.edu).
